@@ -1,0 +1,198 @@
+#!/bin/sh
+
+POSIXLY_CORRECT=yes
+
+realpathCheck() {
+  if [ ! -x "$(command -v realpath)" ]; then
+    echo "ERROR: realpath utility not installed. Please install and try again." >&2
+    exit 1
+  fi
+}
+
+wediCheck() {
+  if [ -z $WEDI_RC ] ; then
+   >&2 echo "ERROR: Environment variable WEDI_RC not defined. Before running the script, WEDI_RC has to contain path to file, that stores history of editations with WEDI."
+   exit 1
+  else
+    if [ ! -e "$WEDI_RC" ]; then
+      if [ ! -e `dirname $WEDI_RC` ] ; then
+        mkdir -p $(dirname $WEDI_RC) 2>/dev/null
+        if [ $? != 0 ]; then
+            echo "ERROR: cannot create WEDI_RC. User doesn't have writing permissions in specified filepath." >&2
+            exit 1
+        fi
+      fi
+      touch "$WEDI_RC" 2>/dev/null
+      if [ $? != 0 ]; then
+          echo "ERROR: cannot create WEDI_RC. User doesn't have writing permissions in specified filepath." >&2
+          exit 1
+      fi
+    fi
+  fi
+}
+
+wediPermissionsCheck() {
+  if [ ! -w "$WEDI_RC" ] || [ ! -r "$WEDI_RC" ]; then
+    echo "ERROR: User doesn't have read/write permissions for WEDI_RC file:
+     `realpath $WEDI_RC`" >&2
+    exit 1
+  fi
+}
+
+dateCheck()  {
+  DATEFORMAT="[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]"
+  if [ -z `echo "$1" | grep "$DATEFORMAT"` ]; then
+    echo "ERROR: Wrong date format. Accepted date format is YYYY-MM-DD" >&2
+    exit 1
+  fi
+ }
+
+filenameCheck() {
+  if [ -z `echo $1 | grep "^[^;|]*$"` ]; then
+    echo "ERROR: Wrong filepath name format. Wedi does not support ';' and '|' characters in filepath name." >&2
+    exit 1
+  fi
+}
+
+selectDirectory () {
+  if [ $1 -eq $2 ]; then
+    FILENAME=`realpath ./`
+  else
+    FILENAME=`realpath $3`
+  fi
+  echo $FILENAME
+}
+
+deleteIrrelevantLogs() {
+  while read p; do
+    #echo $p
+    if [ ! -f `grep "$p" $WEDI_RC | cut -d';' -f1` ]; then
+      STRING=`grep "$p" $WEDI_RC | cut -d';' -f-3`
+      sed -i.bak 's|'"$p"'|'$STRING';n|' $WEDI_RC
+    fi
+  done <$WEDI_RC
+  sed -i.bak '/.*;.*;.*;n/d' $WEDI_RC
+}
+
+checkLastEdited() {
+  SORTED=`grep "$1/[^/]*;" $WEDI_RC | cut -d';' -f3 | sort | tail -1`
+  FILENAME=`grep "$1/[^/]*;.*$SORTED" $WEDI_RC | cut -d';' -f1 `
+  echo $FILENAME
+}
+
+checkMostEdited() {
+  SORTED=`grep "$1/[^/]*;" $WEDI_RC | cut -d';' -f2 | sort -n | tail -1`
+  FILENAME=`grep "$1/[^/]*;$SORTED;.*;.*" $WEDI_RC | cut -d';' -f1 `
+  echo $FILENAME
+}
+
+checkBeforeAfter() {
+  if [ $1 = "-b" ]; then
+    for i in `grep "$2/[^/]*;" $WEDI_RC`
+    do
+      if [ `grep "$i" $WEDI_RC | cut -d';' -f3 | cut -d'-' -f-3 | tr -d -` -lt `echo "$3" | tr -d -` ]; then
+        echo `grep "$i" $WEDI_RC | cut -d';' -f1 | rev | cut -d'/' -f1 | rev `
+      fi
+    done
+  else
+    for i in `grep "$2/[^/]*;" $WEDI_RC`
+    do
+      if [ `grep "$i" $WEDI_RC | cut -d';' -f3 | cut -d'-' -f-3 | tr -d -` -ge `echo "$3" | tr -d -` ]; then
+        echo `grep "$i" $WEDI_RC | cut -d';' -f1 | rev | cut -d'/' -f1 | rev `
+      fi
+    done
+  fi
+}
+
+addLog() {
+  DATE="$(date '+%Y-%m-%d-%H-%M-%S')" # pise unexpected operator ak sutam dvojbodky
+  if [ -z `grep "$1;.*" $WEDI_RC` ]; then
+    echo "$1;1;$DATE;y" >> $WEDI_RC
+
+  else
+    COUNTER=`sed -n 's|'$1';\(.*\);.*;.*|\1|p' $WEDI_RC`
+    COUNTER=`echo "$COUNTER+1" | bc`
+
+    #echo $COUNTER
+    sed -i.bak 's|'$1';.*|'$1';'$COUNTER';'"$DATE"';y|' $WEDI_RC
+  fi
+}
+
+
+realpathCheck
+wediCheck
+wediPermissionsCheck
+USED_EDITOR=${EDITOR:-${VISUAL:-vi}}
+
+#edit user defined file
+if [ $# -eq "1" ] && [ -f "$1" ]; then
+  FILENAME=`realpath $1`
+  filenameCheck $FILENAME
+  $USED_EDITOR $FILENAME
+  if [ $? != 0 ]; then
+    exit $?
+  fi
+  addLog $FILENAME
+
+# pick last edited file
+elif [ $# -eq "1" ] && [ -d "$1" ] || [ $# -eq "0" ]; then
+  FILENAME=$( selectDirectory $# 0 $1)
+  deleteIrrelevantLogs
+  FILENAME=$( checkLastEdited $FILENAME )
+  if [ -z $FILENAME ]; then
+    echo "ERROR: No existing file was edited in directory." >&2
+    exit 1
+  fi
+  $USED_EDITOR $FILENAME
+  if [ $? != 0 ]; then
+    exit $?
+  fi
+  addLog $FILENAME
+
+# pick the most edited file | list all edited files in directory
+#test number of arguments, check if last argument is directory (if argument exists)
+elif [ $# -eq "2" ] && [ -d "$2" ] || [ $# -eq "1" ]; then
+  #test if first argument is from set of valid arguments
+  if [ $1 = "-m" ] || [ $1 = "-l" ]; then
+    FILENAME=$( selectDirectory $# 1 $2)
+    deleteIrrelevantLogs
+
+    if [ $1 = "-m" ]; then
+      FILENAME=$( checkMostEdited $FILENAME )
+      if [ -z $FILENAME ]; then
+        echo "ERROR: No existing file was edited in directory." >&2
+        exit 1
+      fi
+      $USED_EDITOR $FILENAME
+      if [ $? != 0 ]; then
+        exit $?
+      fi
+      addLog $FILENAME
+    else
+      grep "$FILENAME/[^/]*;" $WEDI_RC | cut -d';' -f1 | rev | cut -d'/' -f1 | rev |sort
+    fi
+
+  else
+     >&2 echo "ERROR: Argument or file does not exist."
+     exit 1
+  fi
+
+# list all edited files before | after date defined by user
+#test number of arguments, check if last argument is directory (if argument exists)
+elif [ $# -eq "3" ] && [ -d "$3" ] || [ $# -eq "2" ]; then
+  #test if first argument is from set of valid arguments
+  if [ $1 = "-b" ] || [ $1 = "-a" ]; then
+    dateCheck $2
+    FILENAME=$( selectDirectory $# 2 $3)
+    deleteIrrelevantLogs
+    checkBeforeAfter $1 $FILENAME $2
+
+  else
+     >&2 echo "ERROR: Wrong set of arguments has been used."
+     exit 1
+  fi
+
+else
+  >&2 echo 'ERROR: Wrong set of arguments has been used, or '
+  exit 1
+fi

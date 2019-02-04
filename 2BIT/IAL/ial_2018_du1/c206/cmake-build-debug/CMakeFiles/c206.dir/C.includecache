@@ -1,0 +1,22 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/iljacek/School/IAL/ial_2018_du1/c206/c206-advanced-test.c
+c206.h
+/home/iljacek/School/IAL/ial_2018_du1/c206/c206.h
+
+/home/iljacek/School/IAL/ial_2018_du1/c206/c206.c
+c206.h
+/home/iljacek/School/IAL/ial_2018_du1/c206/c206.h
+
+/home/iljacek/School/IAL/ial_2018_du1/c206/c206.h
+stdio.h
+-
+stdlib.h
+-
+

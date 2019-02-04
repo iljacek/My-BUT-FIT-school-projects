@@ -1,0 +1,1 @@
+/usr/bin/cc -g   CMakeFiles/c203.dir/c203-test.c.o CMakeFiles/c203.dir/c203.c.o  -o c203 

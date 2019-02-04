@@ -1,0 +1,30 @@
+Archive:  xdacer00.zip
+  inflating: dokumentace.pdf         
+  inflating: errors.h                
+  inflating: expression_parser.c     
+  inflating: expression_parser.h     
+  inflating: main.c                  
+  inflating: Makefile                
+  inflating: parser.c                
+  inflating: parser.h                
+  inflating: rozdeleni               
+  inflating: scanner.c               
+  inflating: scanner.h               
+  inflating: str.c                   
+  inflating: str.h                   
+  inflating: symstack.c              
+  inflating: symstack.h              
+  inflating: symtable.c              
+  inflating: symtable.h              
+  inflating: token_list.c            
+  inflating: token_list.h            
+  inflating: code_generator.c        
+  inflating: code_generator.h        
+gcc    -c -o code_generator.o code_generator.c
+gcc    -c -o expression_parser.o expression_parser.c
+gcc    -c -o parser.o parser.c
+gcc    -c -o scanner.o scanner.c
+gcc    -c -o str.o str.c
+gcc    -c -o symstack.o symstack.c
+gcc    -c -o symtable.o symtable.c
+gcc -g -Wall -Werror -Wextra -pedantic --std=c99 -o ifj18  main.c code_generator.c expression_parser.c parser.c scanner.c str.c symstack.c symtable.c token_list.c

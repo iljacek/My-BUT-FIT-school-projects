@@ -1,0 +1,1 @@
+/usr/bin/cc -g   CMakeFiles/c206.dir/c206-test.c.o CMakeFiles/c206.dir/c206.c.o  -o c206 

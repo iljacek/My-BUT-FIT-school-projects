@@ -1,0 +1,1 @@
+/usr/bin/cc -g   CMakeFiles/c201.dir/c201-test.c.o CMakeFiles/c201.dir/c201.c.o  -o c201 
